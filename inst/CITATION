@@ -1,0 +1,31 @@
+citHeader("To cite glmm.hp in publications use:")
+
+bibentry(bibtype = "Article",
+         title        = "glmm.hp: an R package for computing individual effect of predictors in generalized linear mixed models.",
+         author       = as.person("Jiangshan Lai [aut],Yi Zou [aut],Shuang Zhang [aut],Xiaoguang Zhang [aut],Lingfeng Mao [aut]"),
+         journal      = "Journal of Plant Ecology",
+		  volume       = "15(6):1302-1307",
+         year         = "2022",
+         url          = "https://doi.org/10.1093/jpe/rtac096",
+
+         textVersion  =
+           paste("Jiangshan Lai, Yi Zou, Shuang Zhang, Xiaoguang Zhang,Lingfeng Mao(2022).",
+                 "glmm.hp: an R package for computing individual effect of predictors in generalized linear mixed models.",
+                 "Journal of Plant Ecology,15(6):1302-1307",
+                 "URL https://doi.org/10.1093/jpe/rtac096")
+)
+
+bibentry(bibtype = "Article",
+         title        = "Extension of the glmm.hp package to Zero-Inflated generalized linear mixed models and multiple regression.",
+         author       = as.person("Jiangshan Lai [aut],Weijie Zhu[aut],Dongfang Cui [aut],Lingfeng Mao [aut]"),
+         journal      = "Journal of Plant Ecology",
+		  volume       = "16(6):rtad038",
+         year         = "2023",
+         url          = "https://doi.org/10.1093/jpe/rtad038",
+
+         textVersion  =
+           paste("Jiangshan Lai, Weijie Zhu, Dongfang Cui, Lingfeng Mao(2023).",
+                 "Extension of the glmm.hp package to Zero-Inflated generalized linear mixed models and multiple regression.",
+                 "Journal of Plant Ecology,16(6):rtad038",
+                 "URL https://doi.org/10.1093/jpe/rtad038")
+)
