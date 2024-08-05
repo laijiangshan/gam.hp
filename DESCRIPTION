@@ -1,13 +1,14 @@
 Package: gam.hp
 Type: Package
 Title: Hierarchical Partitioning of Adjusted R2 and Explained Deviance for Generalized Additive Models
-Version: 0.0-1
-Date:  2024-3-12
+Version: 0.0-2
+Date:  2024-7-25
 Depends:  R (>= 3.4.0),mgcv,ggplot2
 Authors@R: c(person("Jiangshan", "Lai", , "lai@njfu.edu.cn", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-0279-8816")),person("Jing", "Tang", role="aut"))
 Maintainer: Jiangshan Lai <lai@njfu.edu.cn>
-Description: Conducts hierarchical partitioning to calculate individual contributions of each predictor towards adjusted R2 and explained deviance for generalized additive models based on output of gam() in 'mgcv' package, applying the algorithm <doi:10.1093/jpe/rtac096>.
+Description: Conducts hierarchical partitioning to calculate individual contributions of each predictor towards adjusted R2 and explained deviance for generalized additive models based on output of gam()in 'mgcv' package, applying the algorithm in this paper: Lai(2024) <doi:10.1016/j.pld.2024.06.002>.
 License: GPL
 Encoding: UTF-8
+URL: https://github.com/laijiangshan/gam.hp
 RoxygenNote: 7.1.1
