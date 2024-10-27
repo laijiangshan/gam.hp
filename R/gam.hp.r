@@ -33,67 +33,111 @@
 #'gam.hp(mod1,type="adjR2")
 #'gam.hp(mod1,commonality=TRUE)
 
-gam.hp <- function(mod,type="dev",commonality = FALSE) 
-{
-  # initial checks
-  if (!inherits(mod, c("glm","lm","gam"))) stop("gam.hp only supports gam objects at the moment")
+#'@importFrom(foreach,"%dopar%")
 
-  Formu <- strsplit(as.character(mod$call$formula)[3],"")[[1]]
-  if("*"%in%Formu)stop("Please put the interaction term as a new variable (i.e. link variables by colon(:)) and  avoid the asterisk (*) and colon(:) in the original model")
+gam.hp <- function(mod, type = "dev", commonality = FALSE, parallel = FALSE, cores = NA) {
+  # initial checks
+  if (!inherits(mod, c("glm", "lm", "gam"))) stop("gam.hp only supports gam objects at the moment")
+
+  Formu <- strsplit(as.character(mod$call$formula)[3], "")[[1]]
+  if ("*" %in% Formu)
+    stop("Please put the interaction term as a new variable (i.e. link variables by colon(:)) and  avoid the asterisk (*) and colon(:) in the original model")
   #if GAM，not use orgianl ivname
   #if('gam' %in% class(mod)) ivname <- str_split(str_split(as.character(mod$call$formula)[2] ,'~')[[1]][2] ,'[/+]')[[1]] else ivname <- strsplit(as.character(mod$call$formula)[3],"[+]")[[1]] 
   #try delete call in mod$call$formula, if some question
   #if('gam' %in% class(mod)) ivname <- str_split(as.character(mod$formula)[3] ,'[/+]')[[1]] else ivname <- strsplit(as.character(mod$call$formula)[3],"[/+]")[[1]] 
-  ivname <- strsplit(as.character(mod$formula)[3],"[/+]")[[1]] 
-  
+  ivname <- strsplit(as.character(mod$formula)[3], "[/+]")[[1]]
+
   iv.name <- ivname
   nvar <- length(iv.name)
   if (nvar < 2)
     stop("Analysis not conducted. Insufficient number of predictors.")
-
   totalN <- 2^nvar - 1
   binarymx <- matrix(0, nvar, totalN)
+  print("Calculating binary matrix.")
+  pb <- txtProgressBar(max = 100, style = 3)
   for (i in 1:totalN) {
+    setTxtProgressBar(pb, i / totalN * 100)
     binarymx <- creatbin(i, binarymx)
   }
+  close(pb)
 
-if(type=="adjR2")outr2  <- summary(mod)$r.sq
-if(type=="dev")outr2  <- summary(mod)$dev.expl
+  if (type == "adjR2") outr2  <- summary(mod)$r.sq
+  if (type == "dev") outr2  <- summary(mod)$dev.expl
 
-r2type  <-  row.names(outr2)
-nr2type   <-  length(r2type)
-if(nr2type==0)
-{nr2type <- 1
-if(commonality)
-{r2type <- 'commonality.analysis'}
-else
-{r2type <- 'hierarchical.partitioning'}
-}
+  r2type <- row.names(outr2)
+  nr2type <- length(r2type)
+  if (nr2type == 0) {
+    nr2type <- 1
+    if (commonality) {
+      r2type <- "commonality.analysis"
+    } else {
+      r2type <- "hierarchical.partitioning"
+    }
+  }
 
+  # Update null model
+  if (inherits(mod, c("gam", "glm", "lm"))) {
+    dat <- na.omit(eval(mod$model))
+    if (!inherits(dat, "data.frame")) {
+      stop("Please change the name of data object in the original gam analysis then try again.")
+    }
+    #判断一下是不是GAM，不是就用原来的to_del
+    if ("gam" %in% class(mod)) {
+      to_del <- paste(as.character(mod$formula)[2], "~", "1")
+    } else {
+      to_del <- paste(as.character(mod$call$formula)[2], "~", "1")
+    }
 
-if(inherits(mod, c("gam","glm","lm")))
-{dat <- na.omit(eval(mod$model))
-if(!inherits(dat, "data.frame")){stop("Please change the name of data object in the original gam analysis then try again.")}
-#判断一下是不是GAM，不是就用原来的to_del
-#if('gam' %in% class(mod)) to_del <- paste(str_split(as.character(mod$call$formula)[2],'~')[[1]][1],"~","1") else to_del <- paste(as.character(mod$call$formula)[2],"~","1")
-if('gam' %in% class(mod)) to_del <- paste(as.character(mod$formula)[2],"~","1") else to_del <- paste(as.character(mod$call$formula)[2],"~","1")
+    mod_null <-  stats::update(object = mod, formula. = to_del, data = dat)
+  }
 
-mod_null <-  stats::update(object = mod, formula. = to_del, data = dat)
- }
-
-
-outputList  <- list()
-outputList[[1]] <- outr2
-for (k in 1:nr2type)
-{
-  commonM <- matrix(nrow = totalN, ncol = 3)
-  for (i in 1:totalN) {
-    tmp.name <- iv.name[as.logical(binarymx[, i])]
-   to_add <- paste("~",paste(tmp.name,collapse = " + "),sep=" ")
-    modnew  <- stats::update(object = mod_null, data = dat,to_add) 
-    if(type=="dev")commonM[i, 2]  <- summary(modnew)$dev.expl
-	if(type=="adjR2")commonM[i, 2]  <- summary(modnew)$r.sq
-	
+  outputList  <- list()
+  outputList[[1]] <- outr2
+  # Update models and return the results
+  for (k in 1:nr2type) {
+    print("Calculating GAM models.")
+    commonM <- matrix(nrow = totalN, ncol = 3)
+    if (parallel) {
+      if (is.na(cores)) {
+        cores <- detectCores() - 1
+      }
+      cluster <- makeSOCKcluster(cores)
+      registerDoSNOW(cluster)
+      pb <- txtProgressBar(max = 100, style = 3)
+      progress <- function(n) setTxtProgressBar(pb, n  / totalN * 100)
+      opts <- list(progress = progress)
+      results <- foreach(i = 1:totalN,
+                         .options.snow = opts,
+                         .packages = c("mgcv", "gam.hp")) %dopar% {
+        tmp.name <- iv.name[as.logical(binarymx[, i])]
+        to_add <- paste("~", paste(tmp.name, collapse = " + "), sep = " ")
+        modnew  <- stats::update(object = mod_null, data = dat, to_add)
+        if (type == "dev") {
+          out <- summary(modnew)$dev.expl
+        }
+        if (type == "adjR2") {
+          out <- summary(modnew)$r.sq
+        }
+        rm(tmp.name, to_add, modnew)
+        gc()
+        out
+      }
+      close(pb)
+      commonM[, 2] <- unlist(results)
+      stopCluster(cl = cluster)
+    } else {
+      pb <- txtProgressBar(max = 100, style = 3)
+      for (i in 1:totalN) {
+        tmp.name <- iv.name[as.logical(binarymx[, i])]
+        to_add <- paste("~", paste(tmp.name, collapse = " + "), sep = " ")
+        modnew  <- stats::update(object = mod_null, data = dat, to_add)
+        setTxtProgressBar(pb, i / totalN * 100)
+        if (type == "dev") commonM[i, 2]  <- summary(modnew)$dev.expl
+        if (type == "adjR2") commonM[i, 2]  <- summary(modnew)$r.sq
+      }
+      close(pb)
+    }
   }
 
   commonlist <- vector("list", totalN)
@@ -102,7 +146,6 @@ for (k in 1:nr2type)
   for (i in 1:nvar) {
     seqID[i] = 2^(i-1)
   }
-
 
   for (i in 1:totalN) {
     bit <- binarymx[1, i]
@@ -115,8 +158,9 @@ for (k in 1:nr2type)
         alist <- ivname
         blist <- genList(ivname, -seqID[j])
         ivname <- c(alist, blist)
+      } else {
+        ivname <- genList(ivname, seqID[j])
       }
-      else ivname <- genList(ivname, seqID[j])
     }
     ivname <- ivname * -1
     commonlist[[i]] <- ivname
@@ -196,36 +240,44 @@ for (k in 1:nr2type)
   dimnames(outputcommonM) <- list(rowNames, colNames)
 
   VariableImportance <- matrix(nrow = nvar, ncol = 4)
-# VariableImportance <- matrix(nrow = nvar, ncol = 2)
+  # VariableImportance <- matrix(nrow = nvar, ncol = 2)
   for (i in 1:nvar) {
-	VariableImportance[i, 3] <-  round(sum(binarymx[i, ] * (commonM[,3]/apply(binarymx,2,sum))), digits = 4)
-	#VariableImportance[i, 1] <-  round(sum(binarymx[i, ] * (commonM[,3]/apply(binarymx,2,sum))), digits = 4)
+    VariableImportance[i, 3] <-  round(sum(binarymx[i, ] * (commonM[, 3] / apply(binarymx, 2, sum))), digits = 4)
+    #VariableImportance[i, 1] <-  round(sum(binarymx[i, ] * (commonM[,3]/apply(binarymx,2,sum))), digits = 4)
   }
-  
-  VariableImportance[,1] <- outputcommonM[1:nvar,1]
-  VariableImportance[,2] <- VariableImportance[,3]-VariableImportance[,1]
-  
-  total=round(sum(VariableImportance[,3]),digits = 4)
+
+  VariableImportance[, 1] <- outputcommonM[1:nvar, 1]
+  VariableImportance[, 2] <- VariableImportance[, 3] - VariableImportance[, 1]
+
+  total <- round(sum(VariableImportance[, 3]), digits = 4)
   #total=round(sum(VariableImportance[,1]),digits = 4)
-  VariableImportance[, 4] <- round(100*VariableImportance[, 3]/total,2)
-#VariableImportance[, 2] <- round(100*VariableImportance[, 1]/total,2)
- #dimnames(VariableImportance) <- list(iv.name, c("Individual","I.perc(%)"))
- dimnames(VariableImportance) <- list(iv.name, c("Unique","Average.share","Individual","I.perc(%)"))
-  
-if(commonality)
-{outputList[[k+1]]<-outputcommonM}
+  VariableImportance[, 4] <- round(100 * VariableImportance[, 3] / total, 2)
+  #VariableImportance[, 2] <- round(100*VariableImportance[, 1]/total,2)
+  #dimnames(VariableImportance) <- list(iv.name, c("Individual","I.perc(%)"))
+  dimnames(VariableImportance) <- list(iv.name, c("Unique", "Average.share", "Individual", "I.perc(%)"))
 
-else
-{outputList[[k+1]]<-VariableImportance}
+  if (commonality) {
+    return(outputcommonM)
+  } else {
+    return(VariableImportance)
+  }
+
+  outputList  <- c(outr2, do.call(par.result))
+
+  if (type == "adjR2") {
+    names(outputList) <- c("adjusted.R2", r2type)
+  }
+  if (type == "dev") {
+    names(outputList) <- c("Explained.deviance", r2type)
+  }
+  #if(inherits(mod, "lm")&!inherits(mod, "glm")){names(outputList) <- c("Total.R2",r2type)}
+  outputList$variables <- iv.name
+  if (commonality) {
+    outputList$type <- "commonality.analysis"
+  }
+  if (!commonality) {
+    outputList$type <- "hierarchical.partitioning"
+  }
+  class(outputList) <- "gamhp" # Class definition
+  outputList
 }
-
-if(type=="adjR2"){names(outputList) <- c("adjusted.R2",r2type)}
-if(type=="dev"){names(outputList) <- c("Explained.deviance",r2type)}
-#if(inherits(mod, "lm")&!inherits(mod, "glm")){names(outputList) <- c("Total.R2",r2type)}
-outputList$variables <- iv.name
-if(commonality){outputList$type="commonality.analysis"}
-if(!commonality){outputList$type="hierarchical.partitioning"}
-class(outputList) <- "gamhp" # Class definition
-outputList
-}
-
