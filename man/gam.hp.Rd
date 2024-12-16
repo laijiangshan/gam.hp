@@ -4,10 +4,12 @@
 \alias{gam.hp}
 \title{Hierarchical Partitioning of Adjusted R2 and Explained Deviance for Generalized Additive Models}
 \usage{
-gam.hp(mod, type = "dev", commonality = FALSE)
+gam.hp(mod, iv = NULL, type = "dev", commonality = FALSE)
 }
 \arguments{
 \item{mod}{Fitted "gam" model objects.}
+
+\item{iv}{optional The relative importance of predictor groups will be assessed. The input for iv should be a list, where each element contains the names of variables belonging to a specific group. These variable names must correspond to the predictor variables defined in the model (mod).}
 
 \item{type}{The type of R-square of gam, either "dev" or "adjR2", in which "dev" is explained deviance and "adjR2" is adjusted R-square, the default is "dev".}
 
@@ -31,6 +33,9 @@ summary(mod1)
 gam.hp(mod1)
 gam.hp(mod1,type="adjR2")
 gam.hp(mod1,commonality=TRUE)
+iv <- list(env1=c("s(Petal.Length)","s(Petal.Width)"),env2="Sepal.Width")
+gam.hp(mod1,iv,type="adjR2")
+gam.hp(mod1,iv,commonality=TRUE)
 }
 \references{
 \itemize{
