@@ -1,6 +1,7 @@
 gam.hp is an R package for Hierarchical partitioning for Adjusted R2 and Explained Deviance for Generalized Additive Models, to install it, please use the following command in R:
 
 library(devtools)
+
 install_github('laijiangshan/gam.hp',build_vignettes = TRUE)
 
 #If you haven't had devtools installed, please install it by typing "install.packages("devtools")" in R console. 
