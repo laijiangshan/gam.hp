@@ -8,3 +8,4 @@ install_github('laijiangshan/gam.hp',build_vignettes = TRUE)
 please cite this paper if you use gam.hp package as: 
 
 Jiangshan Lai, Jing Tang, Tingyuan Li, Aiying Zhan, Lingfeng Mao. 2024. Evaluating the relative importance of predictors in Generalized Additive Models using the gam.hp R package. Plant Diversity, 46(4): 542-546 https://www.sciencedirect.com/science/article/pii/S2468265924000854
+Any question ask lai@njfu.edu.cn
