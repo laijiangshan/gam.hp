@@ -2,49 +2,77 @@
 % Please edit documentation in R/gam.hp.r
 \name{gam.hp}
 \alias{gam.hp}
-\title{Hierarchical Partitioning of Adjusted R2 and Explained Deviance for Generalized Additive Models}
+\title{Hierarchical Partitioning of Adjusted R2 and Explained Deviance for Generalized Additive Models (GAM and BAM)}
 \usage{
-gam.hp(mod, iv = NULL, type = "dev", commonality = FALSE)
+gam.hp(mod, iv = NULL, type = "dev", commonality = FALSE, data = NULL)
 }
 \arguments{
-\item{mod}{Fitted "gam" model objects.}
+\item{mod}{Fitted \code{"gam"} or \code{"bam"} model object from the \pkg{mgcv} package.}
 
-\item{iv}{optional The relative importance of predictor groups will be assessed. The input for iv should be a list, where each element contains the names of variables belonging to a specific group. These variable names must correspond to the predictor variables defined in the model (mod).}
+\item{iv}{Optional. A list specifying groups of predictor variables for assessing group-wise relative importance.
+Each element of the list should contain the names of variables belonging to a specific group, corresponding
+to the predictor names defined in the model (\code{mod}).}
 
-\item{type}{The type of R-square of gam, either "dev" or "adjR2", in which "dev" is explained deviance and "adjR2" is adjusted R-square, the default is "dev".}
+\item{type}{Character. The type of R-square for GAM/BAM models, either \code{"dev"} or \code{"adjR2"}.
+\code{"dev"} represents the explained deviance, and \code{"adjR2"} represents the adjusted R-square.
+The default is \code{"dev"}.}
 
-\item{commonality}{Logical; If TRUE, the result of commonality analysis (2^N-1 fractions for N predictors) is shown, the default is FALSE.}
+\item{commonality}{Logical; if \code{TRUE}, the function returns the results of commonality analysis
+(i.e., 2^N−1 fractions for N predictors). Default is \code{FALSE}.}
+
+\item{data}{Optional. The dataset used to fit the model. If not provided, the function will attempt to extract
+the data directly from the fitted \code{mod} object. This argument is mainly useful for \code{\link[mgcv]{bam}}
+models, where the model object may not always store the full dataset (especially when using large datasets or
+parallel fitting options).}
 }
 \value{
-\item{dev}{The R2 for the full model.}
-
-\item{hierarchical.partitioning}{A matrix containing individual effects and percentage of individual effects towards total adjusted R2 and explained deviance for each predictor.}
+\item{dev}{The R2 (either explained deviance or adjusted R2) for the full model.}
+\item{hierarchical.partitioning}{A matrix containing the individual effects and the percentage
+contribution of each predictor to total explained deviance or adjusted R2.}
 }
 \description{
-Hierarchical Partitioning of Adjusted R2 and Explained Deviance for Generalized Additive Models
+This function conducts hierarchical partitioning to calculate the individual contributions of each predictor
+towards total adjusted R2 and explained deviance for Generalized Additive Models fitted by either
+\code{\link[mgcv]{gam}} or \code{\link[mgcv]{bam}} in the \pkg{mgcv} package.
 }
 \details{
-This function conducts hierarchical partitioning to calculate the individual contributions of each predictor towards total adjusted R2 and explained deviance for Generalized Additive Models. The adjusted R2 and explained deviance are is the output of summary.gam()in mgcv package.
+The function supports both \code{\link[mgcv]{gam}} and \code{\link[mgcv]{bam}} model objects.
+It decomposes the total explained deviance or adjusted R2 into unique and shared contributions of
+individual predictors or groups of predictors using hierarchical partitioning.
+The adjusted R2 and explained deviance values are extracted from \code{summary.gam()} or \code{summary.bam()}.
 }
 \examples{
 library(mgcv)
-mod1 <- gam(Sepal.Length ~ s(Petal.Length) + s(Petal.Width) + Sepal.Width,data = iris)
+
+## --- Example 1: Using gam() ---
+mod1 <- gam(Sepal.Length ~ s(Petal.Length) + s(Petal.Width) + Sepal.Width,
+            data = iris)
 summary(mod1)
 gam.hp(mod1)
-gam.hp(mod1,type="adjR2")
-gam.hp(mod1,commonality=TRUE)
-iv <- list(env1=c("s(Petal.Length)","s(Petal.Width)"),env2="Sepal.Width")
-gam.hp(mod1,iv,type="adjR2")
-gam.hp(mod1,iv,commonality=TRUE)
+gam.hp(mod1, type = "adjR2")
+gam.hp(mod1, commonality = TRUE)
+iv <- list(env1 = c("s(Petal.Length)", "s(Petal.Width)"), env2 = "Sepal.Width")
+gam.hp(mod1, iv, type = "adjR2")
+gam.hp(mod1, iv, commonality = TRUE)
+
+## --- Example 2: Using bam() ---
+mod2 <- bam(Sepal.Length ~ s(Petal.Length) + s(Petal.Width) + Sepal.Width,
+            data = iris)
+summary(mod2)
+gam.hp(mod2)
+gam.hp(mod2, type = "adjR2")
+gam.hp(mod2, commonality = TRUE)
+## Explicitly specifying data (useful for bam)
+gam.hp(mod2, data = iris)
 }
 \references{
 \itemize{
-\item Lai J.,Tang J., Li T., Zhang A.,Mao L.(2024)Evaluating the relative importance of predictors in Generalized Additive Models using the gam.hp R package.Plant Diversity,46(4):542-546<DOI:10.1016/j.pld.2024.06.002>
-\item Lai J.,Zhu W., Cui D.,Mao L.(2023)Extension of the glmm.hp package to Zero-Inflated generalized linear mixed models and multiple regression.Journal of Plant Ecology,16(6):rtad038<DOI:10.1093/jpe/rtad038>
-\item Lai J.,Zou Y., Zhang S.,Zhang X.,Mao L.(2022)glmm.hp: an R package for computing individual effect of predictors in generalized linear mixed models.Journal of Plant Ecology,15(6):1302-1307<DOI:10.1093/jpe/rtac096>
-\item Lai J.,Zou Y., Zhang J.,Peres-Neto P.(2022) Generalizing hierarchical and variation partitioning in multiple regression and canonical analyses using the rdacca.hp R package.Methods in Ecology and Evolution,13(4):782-788<DOI:10.1111/2041-210X.13800>
-\item Chevan, A. & Sutherland, M. (1991). Hierarchical partitioning. American Statistician, 45, 90-96. doi:10.1080/00031305.1991.10475776
-\item Nimon, K., Oswald, F.L. & Roberts, J.K. (2013). Yhat: Interpreting regression effects. R package version 2.0.0.
+\item Lai J., Tang J., Li T., Zhang A., Mao L. (2024). Evaluating the relative importance of predictors in Generalized Additive Models using the gam.hp R package. *Plant Diversity*, 46(4): 542–546. <DOI:10.1016/j.pld.2024.06.002>
+\item Lai J., Zhu W., Cui D., Mao L. (2023). Extension of the glmm.hp package to zero-inflated generalized linear mixed models and multiple regression. *Journal of Plant Ecology*, 16(6): rtad038. <DOI:10.1093/jpe/rtad038>
+\item Lai J., Zou Y., Zhang S., Zhang X., Mao L. (2022). glmm.hp: an R package for computing individual effect of predictors in generalized linear mixed models. *Journal of Plant Ecology*, 15(6): 1302–1307. <DOI:10.1093/jpe/rtac096>
+\item Lai J., Zou Y., Zhang J., Peres-Neto P. (2022). Generalizing hierarchical and variation partitioning in multiple regression and canonical analyses using the rdacca.hp R package. *Methods in Ecology and Evolution*, 13(4): 782–788. <DOI:10.1111/2041-210X.13800>
+\item Chevan, A. & Sutherland, M. (1991). Hierarchical partitioning. *The American Statistician*, 45, 90–96. <DOI:10.1080/00031305.1991.10475776>
+\item Nimon, K., Oswald, F. L. & Roberts, J. K. (2013). Yhat: Interpreting regression effects. R package version 2.0.0.
 }
 }
 \author{
